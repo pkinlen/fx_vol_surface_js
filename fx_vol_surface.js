@@ -109,7 +109,7 @@ function sk_bsVal(PutOrCall, forwardVal, strike, discountFactor, volatility, yea
 // the main Black Scholes Calculator function, with some checks of the input
 function sk_blackScholesValue( PutOrCall, forwardVal, strike, discountFactor, volatility, yearsToMat)
 {
-     // the following function call will throw on error
+     // the following function call may throw on error
      sk_checkBSInputs( PutOrCall, forwardVal, strike, discountFactor, volatility, yearsToMat);
      return sk_bsVal(PutOrCall, forwardVal, strike, discountFactor, volatility, yearsToMat);
 }
@@ -202,6 +202,9 @@ function sk_getVolFromSurface( deltaRR, arrayYearsToMat, arrayATMFvols, arrayRis
                                            spot, yearsToMat, accountingCcyYield, underlyingYield, strike, "vol");
 }  
 
+// The following function will work out the a, b, c such that:
+// vol( delta )    = a + b * (delta) + c * (delta * delta)
+// Note: we're using the delta of a call, which goes from 1 ( for a zero strike ) to 0 for an infinite strike.
 function sk_volSurfaceCalc(deltaRR, arrayYearsToMat, arrayATMFvols, arrayRiskReversals, arrayStranglePremium,
                            spot, yearsToMat, accountingCcyYield, underlyingYield)
 {
@@ -209,12 +212,16 @@ function sk_volSurfaceCalc(deltaRR, arrayYearsToMat, arrayATMFvols, arrayRiskRev
    riskReversal    = sk_linearInterpArray(arrayYearsToMat, arrayRiskReversals,   yearsToMat);
    stranglePremium = sk_linearInterpArray(arrayYearsToMat, arrayStranglePremium, yearsToMat);
 
-   // we're using the delta of a call, which goes from 1 ( for a zero strike ) to 0 for an infinite strike.
-   // vol( delta )    = a + b * (delta) + c * (delta * delta)
+   //
+   // for a given deltaRR ( say 25%) we have three market inputs
+   // which are defined as follows:
+   // 
    // ATMFvol         = vol( delta_ATMF )                  
    // riskReversal    = vol( deltaRR ) - vol( DFq - deltaRR )              // this is: highStrikeVol - lowStrikeVol
    // stranglePremium = vol( deltaRR ) - 2 * vol(delta_ATMF) + vol(DFq - deltaRR)
-   
+   //
+   // DFq is the underlying discount factor. Note that the max delta is DFq and not 1!
+   //  
    this.forward = sk_forward(spot, yearsToMat, accountingCcyYield, underlyingYield);
    var DFq = sk_discFact(yearsToMat, underlyingYield);
    var  
@@ -248,6 +255,12 @@ function sk_volSurfaceCalc(deltaRR, arrayYearsToMat, arrayATMFvols, arrayRiskRev
 function sk_getVolOrDeltaFromVolSurface( deltaRR, arrayYearsToMat, arrayATMFvols, arrayRiskReversals, arrayStranglePremium,
                                          spot, yearsToMat, accountingCcyYield, underlyingYield, strike, volOrDelta)
 {
+   // When we want to get the vol for a particular strike and maturity, there are 2 main steps:
+   //     1: find the a, b, c such that vol( delta ) = a * delta ^ 2 + b * delta + c
+   // and 2: solve for the delta ( numerically ): 
+   //              we guess a delta, use that to get the vol 
+   //              and use that in a BS formula to get the bs_delta
+   //              which we then compare to our guess.
    var calc = new sk_volSurfaceCalc(deltaRR, arrayYearsToMat, arrayATMFvols, arrayRiskReversals, arrayStranglePremium,
                            spot, yearsToMat, accountingCcyYield, underlyingYield);
 
