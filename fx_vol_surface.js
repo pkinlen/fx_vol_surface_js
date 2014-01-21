@@ -204,7 +204,9 @@ function sk_getVolFromSurface( deltaRR, arrayYearsToMat, arrayATMFvols, arrayRis
 
 // The following function will work out the a, b, c such that:
 // vol( delta )    = a + b * (delta) + c * (delta * delta)
-// Note: we're using the delta of a call, which goes from 1 ( for a zero strike ) to 0 for an infinite strike.
+// Note: we're using the delta of a call, 
+//    for zero strike, the delta will be DFq ( discount factor of underlying which can be close to 1 )
+//    to 0 for an infinite strike.
 function sk_volSurfaceCalc(deltaRR, arrayYearsToMat, arrayATMFvols, arrayRiskReversals, arrayStranglePremium,
                            spot, yearsToMat, accountingCcyYield, underlyingYield)
 {
@@ -256,7 +258,7 @@ function sk_getVolOrDeltaFromVolSurface( deltaRR, arrayYearsToMat, arrayATMFvols
                                          spot, yearsToMat, accountingCcyYield, underlyingYield, strike, volOrDelta)
 {
    // When we want to get the vol for a particular strike and maturity, there are 2 main steps:
-   //     1: find the a, b, c such that vol( delta ) = a * delta ^ 2 + b * delta + c
+   //     1: find the a, b, c such that vol( delta ) = a + b * delta + c * delta ^ 2
    // and 2: solve for the delta ( numerically ): 
    //              we guess a delta, use that to get the vol 
    //              and use that in a BS formula to get the bs_delta
@@ -374,6 +376,9 @@ function sk_insideTolerance( x1, x2, tol)
        return (Math.abs( x2 - x1) <= tol);
 }
   
-  
+
+// Suggested changes:
+// currently we have vol = a + b * delta + c * delta ^ 2, 
+// prehaps the a and c could be switched.
 
 
